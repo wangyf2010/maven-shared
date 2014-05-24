@@ -132,6 +132,42 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <artifactId>maven-site-plugin</artifactId>
+        <version>3.2</version>
+        <executions>
+          <execution>
+            <id>default-site</id>
+            <phase>site</phase>
+            <goals>
+              <goal>site</goal>
+            </goals>
+            <configuration>
+              <reportPlugins>
+                <reportPlugin>
+                  <groupId>org.apache.maven.plugins</groupId>
+                  <artifactId>maven-project-info-reports-plugin</artifactId>
+                  <version>2.8-SNAPSHOT</version>
+                  <configuration>
+                    <dependencyLocationsEnabled>false</dependencyLocationsEnabled>
+                  </configuration>
+                  <reportSets>
+                    <reportSet>
+                      <id>default</id>
+                      <configuration>
+                        <dependencyLocationsEnabled>false</dependencyLocationsEnabled>
+                      </configuration>
+                      <reports>
+                        <report>dependency-convergence</report>
+                      </reports>
+                    </reportSet>
+                  </reportSets>
+                </reportPlugin>
+              </reportPlugins>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 
@@ -145,6 +181,7 @@
       </activation>
       <build>
         <plugins>
+	       
          <plugin>
             <artifactId>maven-surefire-plugin</artifactId>
             <configuration>
