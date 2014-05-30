@@ -141,6 +141,11 @@
 					<bannedRepositories>
 						<bannedRepository>http://repo1/*</bannedRepository>
 					</bannedRepositories>
+					<!--
+					<allowedRepositories>
+						<allowedRepository>http://repo2/*</allowedRepository>
+					<allowedRepositories>
+					-->
 				</bannedRepositories>
 			</rules>
 		</configuration>
