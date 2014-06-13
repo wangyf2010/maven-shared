@@ -23,10 +23,12 @@ import java.util.List;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.repository.ArtifactRepository;
+import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
+import org.apache.maven.artifact.resolver.ArtifactResolutionException;
+import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectBuilder;
 import org.apache.maven.project.ProjectBuildingException;
-import org.codehaus.plexus.PlexusContainer;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 
@@ -43,10 +45,10 @@ public class DefaultArtifactDependencyAnalyzer
     private ProjectDependencyAnalyzer projectDependencyAnalyzer;
     
     @Requirement
-    private PlexusContainer container;
+    private MavenProjectBuilder mavenProjectBuilder;
     
     @Requirement
-    private MavenProjectBuilder mavenProjectBuilder;
+    private ArtifactResolver artifactResolver;
     
     public ProjectDependencyAnalysis analyze( Artifact artifact, List remoteArtifactRepositories,
                                               ArtifactRepository localRepository )
@@ -54,6 +56,10 @@ public class DefaultArtifactDependencyAnalyzer
     {
         try
         {
+            if (!artifact.isResolved()){
+                artifactResolver.resolve( artifact, remoteArtifactRepositories, localRepository );
+            }
+            
             MavenProject project = this.mavenProjectBuilder.buildFromRepository( artifact, remoteArtifactRepositories, localRepository );
             return this.projectDependencyAnalyzer.analyze( project );
         }
@@ -61,6 +67,16 @@ public class DefaultArtifactDependencyAnalyzer
         {
             throw new ProjectDependencyAnalyzerException( "can't build maven project for artifact - "
                 + artifact.toString(), e );
+        }
+        catch ( ArtifactResolutionException e )
+        {
+            throw new ProjectDependencyAnalyzerException( "can't resolve artifact - "
+                            + artifact.toString(), e );
+        }
+        catch ( ArtifactNotFoundException e )
+        {
+            throw new ProjectDependencyAnalyzerException( "can't find artifact - "
+                            + artifact.toString(), e );
         }
     }
 
