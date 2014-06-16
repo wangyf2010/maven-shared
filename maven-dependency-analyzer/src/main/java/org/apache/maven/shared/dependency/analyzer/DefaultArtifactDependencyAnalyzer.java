@@ -31,6 +31,7 @@ import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.MavenProjectBuilder;
 import org.apache.maven.project.ProjectBuildingException;
+import org.apache.maven.project.artifact.InvalidDependencyVersionException;
 import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 
@@ -73,7 +74,7 @@ public class DefaultArtifactDependencyAnalyzer
             File pomFile = new File( localRepository.getBasedir(), localRepository.pathOf( projectArtifact ) );
 
             MavenProject project = this.mavenProjectBuilder.buildWithDependencies( pomFile, localRepository, null );
-            project.setArtifact( artifact );
+			project.setDependencyArtifacts(project.createArtifacts( artifactFactory, null, null ) );
 
             return this.projectDependencyAnalyzer.analyze( project );
         }
@@ -89,7 +90,9 @@ public class DefaultArtifactDependencyAnalyzer
         catch ( ArtifactNotFoundException e )
         {
             throw new ProjectDependencyAnalyzerException( "can't find artifact - " + artifact.toString(), e );
-        }
+        } catch (InvalidDependencyVersionException e) {
+        	throw new ProjectDependencyAnalyzerException( "Invalid dependency version for artifact - " + artifact.toString(), e );
+		}
     }
 
     public void setProjectDependencyAnalyzer( ProjectDependencyAnalyzer projectDependencyAnalyzer )
