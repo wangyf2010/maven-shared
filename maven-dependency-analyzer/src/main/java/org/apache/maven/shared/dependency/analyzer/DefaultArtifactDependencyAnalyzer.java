@@ -36,6 +36,8 @@ import org.codehaus.plexus.component.annotations.Component;
 import org.codehaus.plexus.component.annotations.Requirement;
 
 /**
+ * This analyzer will analyze specified artifact. The actual analyzing work would be done by ProjectDependencyAnalyzer.
+ * 
  * @author <a href="mailto:wangyf2010@gmail.com">Simon Wang</a>
  * @version $Id$
  */
@@ -74,7 +76,7 @@ public class DefaultArtifactDependencyAnalyzer
             File pomFile = new File( localRepository.getBasedir(), localRepository.pathOf( projectArtifact ) );
 
             MavenProject project = this.mavenProjectBuilder.buildWithDependencies( pomFile, localRepository, null );
-			project.setDependencyArtifacts(project.createArtifacts( artifactFactory, null, null ) );
+            project.setDependencyArtifacts( project.createArtifacts( artifactFactory, null, null ) );
 
             return this.projectDependencyAnalyzer.analyze( project );
         }
@@ -90,32 +92,35 @@ public class DefaultArtifactDependencyAnalyzer
         catch ( ArtifactNotFoundException e )
         {
             throw new ProjectDependencyAnalyzerException( "can't find artifact - " + artifact.toString(), e );
-        } catch (InvalidDependencyVersionException e) {
-        	throw new ProjectDependencyAnalyzerException( "Invalid dependency version for artifact - " + artifact.toString(), e );
-		}
+        }
+        catch ( InvalidDependencyVersionException e )
+        {
+            throw new ProjectDependencyAnalyzerException( "Invalid dependency version for artifact - "
+                + artifact.toString(), e );
+        }
     }
 
-    public void setProjectDependencyAnalyzer( ProjectDependencyAnalyzer projectDependencyAnalyzer )
+    protected void setProjectDependencyAnalyzer( ProjectDependencyAnalyzer projectDependencyAnalyzer )
     {
         this.projectDependencyAnalyzer = projectDependencyAnalyzer;
     }
 
-    public void setMavenProjectBuilder( MavenProjectBuilder mavenProjectBuilder )
+    protected void setMavenProjectBuilder( MavenProjectBuilder mavenProjectBuilder )
     {
         this.mavenProjectBuilder = mavenProjectBuilder;
     }
 
-    public void setArtifactResolver( ArtifactResolver artifactResolver )
+    protected void setArtifactResolver( ArtifactResolver artifactResolver )
     {
         this.artifactResolver = artifactResolver;
     }
 
-    public ArtifactFactory getFactory()
+    protected ArtifactFactory getFactory()
     {
         return artifactFactory;
     }
 
-    public void setArtifactFactory( ArtifactFactory factory )
+    protected void setArtifactFactory( ArtifactFactory factory )
     {
         this.artifactFactory = factory;
     }
