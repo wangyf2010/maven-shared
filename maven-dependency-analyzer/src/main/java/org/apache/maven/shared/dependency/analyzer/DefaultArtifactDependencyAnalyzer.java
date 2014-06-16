@@ -19,9 +19,11 @@ package org.apache.maven.shared.dependency.analyzer;
  * under the License.
  */
 
+import java.io.File;
 import java.util.List;
 
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.factory.ArtifactFactory;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
 import org.apache.maven.artifact.resolver.ArtifactResolutionException;
@@ -36,31 +38,43 @@ import org.codehaus.plexus.component.annotations.Requirement;
  * @author <a href="mailto:wangyf2010@gmail.com">Simon Wang</a>
  * @version $Id$
  */
-@Component(role = ArtifactDependencyAnalyzer.class)
+@Component( role = ArtifactDependencyAnalyzer.class )
 public class DefaultArtifactDependencyAnalyzer
     implements ArtifactDependencyAnalyzer
 {
 
     @Requirement
     private ProjectDependencyAnalyzer projectDependencyAnalyzer;
-    
+
     @Requirement
     private MavenProjectBuilder mavenProjectBuilder;
-    
+
     @Requirement
     private ArtifactResolver artifactResolver;
-    
+
+    @Requirement
+    private ArtifactFactory artifactFactory;
+
     public ProjectDependencyAnalysis analyze( Artifact artifact, List remoteArtifactRepositories,
                                               ArtifactRepository localRepository )
         throws ProjectDependencyAnalyzerException
     {
         try
         {
-            if (!artifact.isResolved()){
+            if ( !artifact.isResolved() )
+            {
                 artifactResolver.resolve( artifact, remoteArtifactRepositories, localRepository );
             }
-            
-            MavenProject project = this.mavenProjectBuilder.buildFromRepository( artifact, remoteArtifactRepositories, localRepository );
+
+            Artifact projectArtifact =
+                artifactFactory.createProjectArtifact( artifact.getGroupId(), artifact.getArtifactId(),
+                                                       artifact.getVersion() );
+
+            File pomFile = new File( localRepository.getBasedir(), localRepository.pathOf( projectArtifact ) );
+
+            MavenProject project = this.mavenProjectBuilder.buildWithDependencies( pomFile, localRepository, null );
+            project.setArtifact( artifact );
+
             return this.projectDependencyAnalyzer.analyze( project );
         }
         catch ( ProjectBuildingException e )
@@ -70,14 +84,37 @@ public class DefaultArtifactDependencyAnalyzer
         }
         catch ( ArtifactResolutionException e )
         {
-            throw new ProjectDependencyAnalyzerException( "can't resolve artifact - "
-                            + artifact.toString(), e );
+            throw new ProjectDependencyAnalyzerException( "can't resolve artifact - " + artifact.toString(), e );
         }
         catch ( ArtifactNotFoundException e )
         {
-            throw new ProjectDependencyAnalyzerException( "can't find artifact - "
-                            + artifact.toString(), e );
+            throw new ProjectDependencyAnalyzerException( "can't find artifact - " + artifact.toString(), e );
         }
+    }
+
+    public void setProjectDependencyAnalyzer( ProjectDependencyAnalyzer projectDependencyAnalyzer )
+    {
+        this.projectDependencyAnalyzer = projectDependencyAnalyzer;
+    }
+
+    public void setMavenProjectBuilder( MavenProjectBuilder mavenProjectBuilder )
+    {
+        this.mavenProjectBuilder = mavenProjectBuilder;
+    }
+
+    public void setArtifactResolver( ArtifactResolver artifactResolver )
+    {
+        this.artifactResolver = artifactResolver;
+    }
+
+    public ArtifactFactory getFactory()
+    {
+        return artifactFactory;
+    }
+
+    public void setArtifactFactory( ArtifactFactory factory )
+    {
+        this.artifactFactory = factory;
     }
 
 }

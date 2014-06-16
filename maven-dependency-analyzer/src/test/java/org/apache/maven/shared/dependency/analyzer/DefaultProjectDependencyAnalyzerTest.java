@@ -71,6 +71,8 @@ public class DefaultProjectDependencyAnalyzerTest
     {
         super.setUp();
 
+        System.setProperty( "maven.home", "C:/apache-maven-3.0.5" );
+        
         buildTool = (BuildTool) lookup( BuildTool.ROLE );
 
         projectTool = (ProjectTool) lookup( ProjectTool.ROLE );

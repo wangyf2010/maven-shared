@@ -20,23 +20,16 @@ package org.apache.maven.shared.dependency.analyzer;
  */
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
 
 import org.apache.maven.artifact.Artifact;
-import org.apache.maven.artifact.DefaultArtifact;
-import org.apache.maven.artifact.handler.ArtifactHandler;
-import org.apache.maven.artifact.handler.DefaultArtifactHandler;
+import org.apache.maven.artifact.factory.ArtifactFactory;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.artifact.resolver.ArtifactNotFoundException;
 import org.apache.maven.artifact.resolver.ArtifactResolutionException;
-import org.apache.maven.artifact.versioning.VersionRange;
+import org.apache.maven.artifact.resolver.ArtifactResolver;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.MavenProjectBuilder;
 import org.apache.maven.project.ProjectBuildingException;
-import org.apache.maven.shared.invoker.InvocationRequest;
-import org.apache.maven.shared.invoker.InvocationResult;
-import org.apache.maven.shared.test.plugin.BuildTool;
 import org.apache.maven.shared.test.plugin.ProjectTool;
 import org.apache.maven.shared.test.plugin.RepositoryTool;
 import org.apache.maven.shared.test.plugin.TestToolsException;
@@ -45,23 +38,29 @@ import org.codehaus.plexus.PlexusTestCase;
 /**
  * Tests <code>DefaultProjectDependencyAnalyzer</code>.
  * 
- * @author <a href="mailto:markhobson@gmail.com">Mark Hobson</a>
+ * @author <a href="mailto:wangyf2010@gmail.com">Simon Wang</a>
  * @version $Id$
- * @see DefaultProjectDependencyAnalyzer
+ * @see DefaultArtifactDependencyAnalyzer
  */
 public class DefaultArtifactDependencyAnalyzerTest
     extends PlexusTestCase
 {
     // fields -----------------------------------------------------------------
 
-    private BuildTool buildTool;
-
     private ProjectTool projectTool;
 
-    private ArtifactDependencyAnalyzer analyzer;
+    private DefaultArtifactDependencyAnalyzer analyzer;
 
     private static ArtifactRepository localRepo;
-
+    
+    private ProjectDependencyAnalyzer projectDependencyAnalyzer;
+    
+    private MavenProjectBuilder mavenProjectBuilder;
+    
+    private ArtifactResolver artifactResolver;
+    
+    private ArtifactFactory artifactFactory;
+    
     // TestCase methods -------------------------------------------------------
 
     /*
@@ -72,8 +71,6 @@ public class DefaultArtifactDependencyAnalyzerTest
     {
         super.setUp();
 
-        buildTool = (BuildTool) lookup( BuildTool.ROLE );
-
         projectTool = (ProjectTool) lookup( ProjectTool.ROLE );
 
         if ( localRepo == null )
@@ -81,164 +78,39 @@ public class DefaultArtifactDependencyAnalyzerTest
             RepositoryTool repositoryTool = (RepositoryTool) lookup( RepositoryTool.ROLE );
             
             localRepo = repositoryTool.createLocalArtifactRepositoryInstance();
-            
-//            localRepo = repositoryTool.findLocalRepositoryDirectory().getAbsoluteFile();
-            System.out.println( "Local repository: " + localRepo );
         }
 
-        analyzer = (ArtifactDependencyAnalyzer) lookup( ArtifactDependencyAnalyzer.ROLE );
+        analyzer = (DefaultArtifactDependencyAnalyzer) lookup( ArtifactDependencyAnalyzer.ROLE );
+        
+        projectDependencyAnalyzer = (ProjectDependencyAnalyzer) lookup(ProjectDependencyAnalyzer.ROLE);
+        
+        mavenProjectBuilder = (MavenProjectBuilder) lookup(MavenProjectBuilder.ROLE);
+        
+        artifactResolver = (ArtifactResolver) lookup(ArtifactResolver.ROLE);
+        
+        artifactFactory = (ArtifactFactory) lookup(ArtifactFactory.ROLE);
+        
     }
 
     // tests ------------------------------------------------------------------
-//
-//    public void testPom()
-//        throws TestToolsException, ProjectDependencyAnalyzerException
-//    {
-//        compileProject( "pom/pom.xml" );
-//
-//        MavenProject project = getProject( "pom/pom.xml" );
-//
-//        ProjectDependencyAnalysis actualAnalysis = analyzer.analyze( project );
-//
-//        ProjectDependencyAnalysis expectedAnalysis = new ProjectDependencyAnalysis();
-//
-//        assertEquals( expectedAnalysis, actualAnalysis );
-//    }
-//
-//    public void testJarWithNoDependencies()
-//        throws TestToolsException, ProjectDependencyAnalyzerException
-//    {
-//        compileProject( "jarWithNoDependencies/pom.xml" );
-//
-//        MavenProject project = getProject( "jarWithNoDependencies/pom.xml" );
-//
-//        ProjectDependencyAnalysis actualAnalysis = analyzer.analyze( project );
-//
-//        ProjectDependencyAnalysis expectedAnalysis = new ProjectDependencyAnalysis();
-//
-//        assertEquals( expectedAnalysis, actualAnalysis );
-//    }
-//
-//    public void testJarWithCompileDependency()
-//        throws TestToolsException, ProjectDependencyAnalyzerException
-//    {
-//        compileProject( "jarWithCompileDependency/pom.xml" );
-//
-//        MavenProject project2 = getProject( "jarWithCompileDependency/project2/pom.xml" );
-//
-//        if ( project2.getBuild().getOutputDirectory().contains( "${" ) )
-//        {
-//            // if Maven version used as dependency is upgraded to >= 2.2.0 
-//            throw new TestToolsException( "output directory was not interpolated: "
-//                + project2.getBuild().getOutputDirectory() );
-//        }
-//
-//        ProjectDependencyAnalysis actualAnalysis = analyzer.analyze( project2 );
-//
-//        Artifact project1 =
-//            createArtifact( "org.apache.maven.shared.dependency-analyzer.tests", "jarWithCompileDependency1", "jar",
-//                            "1.0", "compile" );
-//        Set<Artifact> usedDeclaredArtifacts = Collections.singleton( project1 );
-//        ProjectDependencyAnalysis expectedAnalysis = new ProjectDependencyAnalysis( usedDeclaredArtifacts, null, null );
-//
-//        assertEquals( expectedAnalysis, actualAnalysis );
-//    }
-//
-//    public void testJarWithTestDependency()
-//        throws TestToolsException, ProjectDependencyAnalyzerException
-//    {
-//        compileProject( "jarWithTestDependency/pom.xml" );
-//
-//        MavenProject project2 = getProject( "jarWithTestDependency/project2/pom.xml" );
-//
-//        ProjectDependencyAnalysis actualAnalysis = analyzer.analyze( project2 );
-//
-//        Artifact project1 =
-//            createArtifact( "org.apache.maven.shared.dependency-analyzer.tests", "jarWithTestDependency1", "jar",
-//                            "1.0", "test" );
-//        Set<Artifact> usedDeclaredArtifacts = Collections.singleton( project1 );
-//
-//        Artifact junit = createArtifact( "junit", "junit", "jar", "3.8.1", "test" );
-//        Set<Artifact> unusedDeclaredArtifacts = Collections.singleton( junit );
-//
-//        ProjectDependencyAnalysis expectedAnalysis =
-//            new ProjectDependencyAnalysis( usedDeclaredArtifacts, null, unusedDeclaredArtifacts );
-//
-//        assertEquals( expectedAnalysis, actualAnalysis );
-//
-//        // MSHARED-253: force used dependency (which is actually used but not detected)
-//        ProjectDependencyAnalysis forcedAnalysis =
-//            actualAnalysis.forceDeclaredDependenciesUsage( new String[] { "junit:junit" } );
-//
-//        usedDeclaredArtifacts = new HashSet<Artifact>( Arrays.asList( project1, junit ) );
-//        expectedAnalysis = new ProjectDependencyAnalysis( usedDeclaredArtifacts, null, null );
-//
-//        assertEquals( expectedAnalysis, forcedAnalysis );
-//
-//        try
-//        {
-//            forcedAnalysis.forceDeclaredDependenciesUsage( new String[]{ "junit:junit" } );
-//            fail( "failure expected since junit dependency is declared-used" );
-//        }
-//        catch( ProjectDependencyAnalyzerException pdae )
-//        {
-//            assertTrue( pdae.getMessage().contains( "Trying to force use of dependencies which are "
-//                                                        + "declared but already detected as used: [junit:junit]" ) );
-//        }
-//
-//        try
-//        {
-//            forcedAnalysis.forceDeclaredDependenciesUsage( new String[]{ "undefined:undefined" } );
-//            fail( "failure expected since undefined dependency is not declared" );
-//        }
-//        catch( ProjectDependencyAnalyzerException pdae )
-//        {
-//            assertTrue( pdae.getMessage().contains( "Trying to force use of dependencies which are "
-//                                                        + "not declared: [undefined:undefined]" ) );
-//        }
-//    }
-
     public void testJarWithXmlTransitiveDependency()
         throws TestToolsException, ProjectDependencyAnalyzerException, ProjectBuildingException, ArtifactResolutionException, ArtifactNotFoundException
     {
         System.setProperty( "maven.home", "C:/apache-maven-3.0.5" );
-        compileProject( "jarWithXmlTransitiveDependency/pom.xml" );
         
         MavenProject project = getProject( "jarWithXmlTransitiveDependency/pom.xml" );
 
-        Artifact jdom = createArtifact( "commons-io", "commons-io", "jar", "1.3.2", "compile" );
+        Artifact jdom = createArtifact( "xalan", "xalan", "jar", "2.7.1", "compile" );
         
+        analyzer.setArtifactResolver( artifactResolver);
+        analyzer.setMavenProjectBuilder( mavenProjectBuilder );
+        analyzer.setProjectDependencyAnalyzer( projectDependencyAnalyzer );
+        analyzer.setArtifactFactory(artifactFactory);
         ProjectDependencyAnalysis actualAnalysis = analyzer.analyze( jdom, project.getRemoteArtifactRepositories(), localRepo );
         
-        System.out.println(actualAnalysis.toString());
-       
-//        Set<Artifact> usedDeclaredArtifacts = Collections.singleton( jdom );
-//
-//        ProjectDependencyAnalysis expectedAnalysis =
-//            new ProjectDependencyAnalysis( usedDeclaredArtifacts, null, null );
-        
-
-        // MSHARED-47: usedUndeclaredArtifacts=[xml-apis:xml-apis:jar:1.0.b2:compile]
-        //assertEquals( expectedAnalysis, actualAnalysis );
-    }
-
-    // private methods --------------------------------------------------------
-
-    private void compileProject( String pomPath )
-        throws TestToolsException
-    {
-        File pom = getTestFile( "target/test-classes/", pomPath );
-        Properties properties = new Properties();
-        List<String> goals = Arrays.asList( "clean", "install" );
-        File log = new File( pom.getParentFile(), "build.log" );
-
-        // TODO: don't install test artifacts to local repository
-        InvocationRequest request = buildTool.createBasicInvocationRequest( pom, properties, goals, log );
-        request.setLocalRepositoryDirectory( new File(localRepo.getBasedir()) );
-        InvocationResult result = buildTool.executeMaven( request );
-
-        assertNull( "Error compiling test project", result.getExecutionException() );
-        assertEquals( "Error compiling test project", 0, result.getExitCode() );
+        System.out.println(actualAnalysis.getUnusedDeclaredArtifacts().toString());
+        System.out.println(actualAnalysis.getUsedDeclaredArtifacts().toString());
+        System.out.println(actualAnalysis.getUsedUndeclaredArtifacts().toString());
     }
 
     private MavenProject getProject( String pomPath )
@@ -251,9 +123,6 @@ public class DefaultArtifactDependencyAnalyzerTest
 
     private Artifact createArtifact( String groupId, String artifactId, String type, String version, String scope )
     {
-        VersionRange versionRange = VersionRange.createFromVersion( version );
-        ArtifactHandler handler = new DefaultArtifactHandler();
-
-        return new DefaultArtifact( groupId, artifactId, versionRange, scope, type, null, handler );
+        return artifactFactory.createArtifact( groupId, artifactId, version, scope, type ); 
     }
 }
